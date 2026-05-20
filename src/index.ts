@@ -294,7 +294,13 @@ function buildBody(opts: {
   }
 
   lines.push('');
-  lines.push(`<sub>[Full report →](${publicReportUrl(apiBaseUrl, runId)}) · runId \`${runId}\`</sub>`);
+  // Prefer the orgId from the delta response so the link routes to
+  // the right org page directly. Fallback to '_' (the unknown-org
+  // placeholder) only when delta is null — in that case the web app
+  // bounces the user to their dashboard, which is still better than
+  // a hard 404.
+  const reportOrgId = delta?.organizationId ?? '_';
+  lines.push(`<sub>[Full report →](${publicReportUrl(apiBaseUrl, reportOrgId, runId)}) · runId \`${runId}\`</sub>`);
   return lines.join('\n');
 }
 
@@ -309,14 +315,17 @@ function buildFailureBody(runId: string, status: string, errLine: string, apiBas
     errLine.slice(0, 500),
     `\`\`\``,
     '',
-    `<sub>runId \`${runId}\` · [open in Crawlmind →](${publicReportUrl(apiBaseUrl, runId)})</sub>`,
+    // Failure case: the API status response doesn't include orgId on
+    // FAILED crawls, so the link goes to the unknown-org placeholder.
+    // The web app handles `_` by bouncing the user to their dashboard.
+    `<sub>runId \`${runId}\` · [open in Crawlmind →](${publicReportUrl(apiBaseUrl, '_', runId)})</sub>`,
   ].join('\n');
 }
 
-function publicReportUrl(apiBaseUrl: string, runId: string): string {
+function publicReportUrl(apiBaseUrl: string, orgId: string, runId: string): string {
   // Best-effort: derive the web app's host from the API host (api.X → X).
   const webHost = apiBaseUrl.replace(/^https?:\/\/(api\.)?/, 'https://');
-  return `${webHost}/orgs/_/crawls/${runId}`;
+  return `${webHost}/orgs/${orgId}/crawls/${runId}`;
 }
 
 function formatDelta(d: number): string {
