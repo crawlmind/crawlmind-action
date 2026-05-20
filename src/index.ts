@@ -198,7 +198,7 @@ async function run(): Promise<void> {
     if (failThreshold > 0 && regression >= failThreshold) {
       core.setFailed(
         `Regression score ${regression} >= fail-threshold ${failThreshold}. ` +
-        `See PR comment for details, or open ${publicReportUrl(apiBaseUrl, runId)}.`,
+        `See PR comment for details, or open ${publicReportUrl(apiBaseUrl, delta?.organizationId ?? '_', runId)}.`,
       );
       return;
     }
