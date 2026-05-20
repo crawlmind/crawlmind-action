@@ -1,0 +1,17 @@
+# Local install
+node_modules/
+.pnpm-store/
+
+# TypeScript intermediate output (we ship from dist/ — the bundled output —
+# committed because GitHub Actions runs the `runs.main` file directly).
+lib/
+
+# Misc
+.DS_Store
+*.log
+.env
+.env.local
+
+# IDE
+.vscode/
+.idea/

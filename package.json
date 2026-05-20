@@ -1,0 +1,28 @@
+{
+  "name": "crawlmind-action",
+  "version": "1.0.0",
+  "description": "GitHub Action that runs a Crawlmind SEO + AI-visibility audit on every PR and comments a delta-vs-main score.",
+  "main": "dist/index.js",
+  "private": true,
+  "scripts": {
+    "build": "ncc build src/index.ts -o dist --source-map --license licenses.txt --minify",
+    "lint": "tsc --noEmit",
+    "package": "npm run lint && npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/crawlmind/crawlmind-action.git"
+  },
+  "keywords": ["actions", "seo", "ai", "audit", "crawlmind"],
+  "author": "Crawlmind",
+  "license": "MIT",
+  "dependencies": {
+    "@actions/core": "^1.10.1",
+    "@actions/github": "^6.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@vercel/ncc": "^0.38.1",
+    "typescript": "^5.5.4"
+  }
+}

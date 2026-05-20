@@ -1,0 +1,78 @@
+name: 'Crawlmind Audit'
+description: 'Run a Crawlmind SEO + AI-visibility audit on every PR. Comments a delta-vs-main score and fails the check when regressions exceed the threshold.'
+author: 'Crawlmind'
+branding:
+  icon: 'search'
+  color: 'blue'
+
+inputs:
+  crawlmind-token:
+    description: |
+      Crawlmind API key with the `ci:audit` scope. Generate at
+      https://crawlmind.ai → org settings → API keys. Recommended:
+      store as a repo secret named CRAWLMIND_TOKEN and pass via
+      `${{ secrets.CRAWLMIND_TOKEN }}`.
+    required: true
+  website-id:
+    description: |
+      Crawlmind website id (cuid). Find it in the URL of the website
+      page: /orgs/<orgId>/projects/<projectId>/websites/<websiteId>.
+    required: true
+  target-url:
+    description: |
+      Override the URL to crawl. Useful when this PR has a preview
+      deployment (Vercel/Netlify/Cloudflare Pages) — pass the preview
+      URL so the audit reflects this PR's changes, not production.
+      Omit to crawl the registered production URL.
+    required: false
+    default: ''
+  max-pages:
+    description: |
+      Max pages to crawl per audit. Lower = faster CI; higher = more
+      coverage. Defaults to 50 (the API's CI-mode default). Capped at
+      200 server-side.
+    required: false
+    default: '50'
+  fail-threshold:
+    description: |
+      Job exits non-zero when the regression score is >= this number.
+      Regression score = (new HIGH issues × 3) + (new CRITICAL × 5) +
+      (overall score drop in points). Set to 0 to never fail the check
+      (comment-only mode). Default 5 = roughly "either 1 new CRITICAL,
+      or 2 new HIGHs, or a 5-point score drop".
+    required: false
+    default: '5'
+  api-base-url:
+    description: |
+      Override the Crawlmind API base URL. Useful for self-hosted
+      deployments. Default points at api.crawlmind.ai. Must NOT include
+      a trailing slash or the /api/v1 prefix — the action appends those.
+    required: false
+    default: 'https://api.crawlmind.ai'
+  poll-timeout-seconds:
+    description: |
+      How long to wait for the audit to complete before timing out the
+      job. Default 600 (10 minutes). For sites > 100 pages bump to 900+.
+    required: false
+    default: '600'
+  comment-mode:
+    description: |
+      `sticky` (default) updates one comment per PR on every run.
+      `append` posts a new comment each time. `none` skips commenting
+      entirely (useful when you want the job result only).
+    required: false
+    default: 'sticky'
+
+outputs:
+  run-id:
+    description: 'Crawlmind crawl-job id for this audit run. Use in subsequent steps for further automation.'
+  overall-score:
+    description: 'Overall audit score (0-100). Empty if the audit failed.'
+  regression-score:
+    description: 'Computed regression score used against fail-threshold.'
+  status:
+    description: 'Final crawl status: SUCCEEDED | PARTIAL | FAILED | CANCELLED'
+
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
