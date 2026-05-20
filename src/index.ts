@@ -62,6 +62,14 @@ interface AuditDelta {
 
 interface AuditStatusResponse {
   runId: string;
+  /**
+   * The org that owns this crawl. Echoed on every status response
+   * (terminal + non-terminal) since the May-2026 API change; older
+   * API versions only included it inside `delta.organizationId`, so
+   * we fall back there for compatibility with self-hosted Crawlmind
+   * deployments that haven't upgraded yet.
+   */
+  organizationId?: string;
   status: 'PENDING' | 'QUEUED' | 'RUNNING' | 'SUCCEEDED' | 'PARTIAL' | 'FAILED' | 'CANCELLED';
   startedAt?: string;
   finishedAt?: string;
@@ -164,11 +172,15 @@ async function run(): Promise<void> {
     core.setOutput('status', final.status);
     core.setOutput('overall-score', final.overallScore != null ? String(final.overallScore) : '');
 
+    // Resolve the org id once — prefer the top-level field (new API),
+    // fall back to delta (older API), then '_' (web app routes to dashboard).
+    const orgId = final.organizationId ?? final.delta?.organizationId ?? '_';
+
     // ── 3. Hard-failure short circuit ──
     if (final.status === 'FAILED' || final.status === 'CANCELLED') {
       const errLine = final.errorMessage ?? final.errorCode ?? 'unknown';
       if (commentMode !== 'none') {
-        await postComment(buildFailureBody(runId, final.status, errLine, apiBaseUrl), commentMode);
+        await postComment(buildFailureBody(runId, final.status, errLine, apiBaseUrl, orgId), commentMode);
       }
       core.setFailed(`Crawl ${final.status.toLowerCase()}: ${errLine}`);
       return;
@@ -186,6 +198,7 @@ async function run(): Promise<void> {
       delta,
       apiBaseUrl,
       websiteId,
+      orgId,
     });
     if (commentMode !== 'none') {
       await postComment(body, commentMode);
@@ -198,7 +211,7 @@ async function run(): Promise<void> {
     if (failThreshold > 0 && regression >= failThreshold) {
       core.setFailed(
         `Regression score ${regression} >= fail-threshold ${failThreshold}. ` +
-        `See PR comment for details, or open ${publicReportUrl(apiBaseUrl, delta?.organizationId ?? '_', runId)}.`,
+        `See PR comment for details, or open ${publicReportUrl(apiBaseUrl, orgId, runId)}.`,
       );
       return;
     }
@@ -240,8 +253,10 @@ function buildBody(opts: {
   delta: AuditDelta | null;
   apiBaseUrl: string;
   websiteId: string;
+  /** Resolved by the caller — top-level field, delta fallback, or '_'. */
+  orgId: string;
 }): string {
-  const { runId, status, pagesCrawled, pagesFailed, durationMs, overallScore, delta, apiBaseUrl } = opts;
+  const { runId, status, pagesCrawled, pagesFailed, durationMs, overallScore, delta, apiBaseUrl, orgId } = opts;
   const lines: string[] = [];
   lines.push(COMMENT_MARKER);
   lines.push('### 🔍 Crawlmind audit');
@@ -294,17 +309,11 @@ function buildBody(opts: {
   }
 
   lines.push('');
-  // Prefer the orgId from the delta response so the link routes to
-  // the right org page directly. Fallback to '_' (the unknown-org
-  // placeholder) only when delta is null — in that case the web app
-  // bounces the user to their dashboard, which is still better than
-  // a hard 404.
-  const reportOrgId = delta?.organizationId ?? '_';
-  lines.push(`<sub>[Full report →](${publicReportUrl(apiBaseUrl, reportOrgId, runId)}) · runId \`${runId}\`</sub>`);
+  lines.push(`<sub>[Full report →](${publicReportUrl(apiBaseUrl, orgId, runId)}) · runId \`${runId}\`</sub>`);
   return lines.join('\n');
 }
 
-function buildFailureBody(runId: string, status: string, errLine: string, apiBaseUrl: string): string {
+function buildFailureBody(runId: string, status: string, errLine: string, apiBaseUrl: string, orgId: string): string {
   return [
     COMMENT_MARKER,
     '### 🔍 Crawlmind audit',
@@ -315,10 +324,7 @@ function buildFailureBody(runId: string, status: string, errLine: string, apiBas
     errLine.slice(0, 500),
     `\`\`\``,
     '',
-    // Failure case: the API status response doesn't include orgId on
-    // FAILED crawls, so the link goes to the unknown-org placeholder.
-    // The web app handles `_` by bouncing the user to their dashboard.
-    `<sub>runId \`${runId}\` · [open in Crawlmind →](${publicReportUrl(apiBaseUrl, '_', runId)})</sub>`,
+    `<sub>runId \`${runId}\` · [open in Crawlmind →](${publicReportUrl(apiBaseUrl, orgId, runId)})</sub>`,
   ].join('\n');
 }
 
