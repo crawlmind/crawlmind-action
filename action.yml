@@ -7,11 +7,17 @@ branding:
 
 inputs:
   crawlmind-token:
+    # NOTE: cannot use the literal `${{ secrets.X }}` syntax in this
+    # description — GitHub eagerly evaluates expressions even inside
+    # YAML string values and fails the action load with "Unrecognized
+    # named-value: 'secrets'" because the secrets context isn't
+    # available at metadata-parse time. Phrased without the dollar
+    # braces; the README still shows the full expression.
     description: |
       Crawlmind API key with the `ci:audit` scope. Generate at
-      https://crawlmind.ai → org settings → API keys. Recommended:
-      store as a repo secret named CRAWLMIND_TOKEN and pass via
-      `${{ secrets.CRAWLMIND_TOKEN }}`.
+      https://crawlmind.ai then go to org settings, API keys.
+      Recommended: store as a repo secret named CRAWLMIND_TOKEN and
+      pass via the workflow expression secrets.CRAWLMIND_TOKEN.
     required: true
   website-id:
     description: |
