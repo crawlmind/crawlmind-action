@@ -340,9 +340,14 @@ async function postComment(body: string, mode: 'sticky' | 'append' | 'none'): Pr
     core.info('Not a pull_request event — skipping comment.');
     return;
   }
-  const token = process.env.GITHUB_TOKEN;
+  // Prefer the explicit input (action.yml defaults it to ${{ github.token }})
+  // over the env var. process.env.GITHUB_TOKEN is NOT auto-set on the
+  // runner — the workflow has to pass it through. Taking it as an input
+  // is the GitHub Actions standard pattern and avoids confusing "I set
+  // permissions but the comment never posts" failures.
+  const token = core.getInput('github-token') || process.env.GITHUB_TOKEN;
   if (!token) {
-    core.warning('GITHUB_TOKEN not set on the workflow. Add `permissions: pull-requests: write` to the job to enable commenting.');
+    core.warning('No github-token available. The action.yml input defaults to `${{ github.token }}`; if you overrode it to empty, restore the default and ensure `permissions: pull-requests: write` is set on the job.');
     return;
   }
   const octokit = github.getOctokit(token);

@@ -68,6 +68,14 @@ inputs:
       entirely (useful when you want the job result only).
     required: false
     default: 'sticky'
+  github-token:
+    description: |
+      Token used to post the PR comment. Defaults to the workflow's
+      auto-provisioned token (which requires `permissions:
+      pull-requests: write` on the job). Override only if posting as
+      a different identity (e.g. a bot account).
+    required: false
+    default: ${{ github.token }}
 
 outputs:
   run-id:
